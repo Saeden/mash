@@ -1,10 +1,39 @@
+use is_executable::IsExecutable;
+use std::path::Path;
+use std::path::PathBuf;
+
 fn main() {
     loop {
         let mut line = String::new();
         std::io::stdin().read_line(&mut line).unwrap();
         let args = tokenize(line);
         println!("{:?}", args);
+        if !args.is_empty() {
+            if let Ok(path) = find_bin(&args[0]) {
+                std::process::Command::new(path.into_os_string())
+                    .spawn()
+                    .expect("Failed to start {args[0]}");
+            } else {
+                println!("Failed to find binary for `{}`", args[0]);
+            }
+        }
     }
+}
+
+fn find_bin(arg: &str) -> Result<PathBuf, std::io::Error> {
+    let executable_dirs = std::env::var("PATH").unwrap();
+    println!("{:?}", executable_dirs);
+    for dir in executable_dirs.split(":") {
+        println!("{dir}");
+        let mut bin_path = PathBuf::from(dir);
+        bin_path.push(arg);
+        if bin_path.is_executable() {
+            println!("{:?}", bin_path);
+            return Ok(bin_path);
+        }
+    }
+
+    Err(std::io::ErrorKind::NotFound.into())
 }
 
 fn tokenize(line: String) -> Vec<String> {
